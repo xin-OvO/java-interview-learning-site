@@ -1,0 +1,420 @@
+{
+  "version": 1,
+  "updated": "2026-11-07",
+  "statusGuide": {
+    "planned": "尚未开始",
+    "draft": "初稿校对中",
+    "ready": "首版可阅读"
+  },
+  "modules": [
+    {
+      "id": "java-collections",
+      "title": "Java 集合",
+      "priority": "P0",
+      "chapters": [
+        {
+          "title": "HashMap：put / get / resize",
+          "path": "java/collections/hashmap",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "ConcurrentHashMap：并发与扩容",
+          "path": "java/collections/concurrenthashmap",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "红黑树与 TreeMap",
+          "path": "java/collections/red-black-tree",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "ArrayList 与 CopyOnWriteArrayList",
+          "path": "java/collections/list",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "concurrency",
+      "title": "多线程与 JMM",
+      "priority": "P0",
+      "chapters": [
+        {
+          "title": "JMM 与 happens-before",
+          "path": "java/concurrency/jmm-happens-before",
+          "status": "ready",
+          "note": "首版可读，包含交互图与检测题"
+        },
+        {
+          "title": "volatile：可见性与原子性",
+          "path": "java/concurrency/volatile-atomicity",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "CAS、ABA 与 AtomicInteger",
+          "path": "java/concurrency/cas-aba",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "AQS 与锁",
+          "path": "java/concurrency/aqs",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "线程池 execute() 全流程",
+          "path": "java/concurrency/thread-pool",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "ThreadLocal 与 CompletableFuture",
+          "path": "java/concurrency/thread-local",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "jvm",
+      "title": "JVM",
+      "priority": "P0",
+      "chapters": [
+        {
+          "title": "堆栈与对象生命周期",
+          "path": "java/jvm/memory",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "GC 与垃圾回收器",
+          "path": "java/jvm/gc",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "OOM 排查实战",
+          "path": "java/jvm/oom",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "类加载与双亲委派",
+          "path": "java/jvm/classloading",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "spring",
+      "title": "Spring",
+      "priority": "P0",
+      "chapters": [
+        {
+          "title": "IOC 与 Bean 生命周期",
+          "path": "spring/ioc",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "AOP 与动态代理",
+          "path": "spring/aop",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "事务传播、隔离与失效",
+          "path": "spring/transactions",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "Spring Boot 自动配置",
+          "path": "spring/autoconfig",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "database",
+      "title": "数据库",
+      "priority": "P0",
+      "chapters": [
+        {
+          "title": "B+ 树与聚簇索引",
+          "path": "database/bplus-tree",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "联合索引与回表",
+          "path": "database/index",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "事务与 MVCC",
+          "path": "database/mvcc",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "锁与死锁",
+          "path": "database/locks",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "SQL EXPLAIN 优化",
+          "path": "database/explain",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "projects",
+      "title": "项目与故障排查",
+      "priority": "P0",
+      "chapters": [
+        {
+          "title": "告警消息中心架构",
+          "path": "projects/alarm-platform",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "Kafka OOM 排查",
+          "path": "projects/kafka-oom",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "ES 聚合慢查询排查",
+          "path": "projects/es-performance",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "系统容量增长 100 倍",
+          "path": "projects/system-design",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "redis",
+      "title": "Redis",
+      "priority": "P1",
+      "chapters": [
+        {
+          "title": "五种常用数据类型",
+          "path": "redis/types",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "缓存击穿、穿透、雪崩",
+          "path": "redis/cache-issues",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "分布式锁与 Redlock 边界",
+          "path": "redis/locks",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "持久化与主从复制",
+          "path": "redis/persistence",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "kafka",
+      "title": "Kafka",
+      "priority": "P1",
+      "chapters": [
+        {
+          "title": "分区、副本与消费组",
+          "path": "kafka/basics",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "Offset 提交与幂等",
+          "path": "kafka/offset",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "Rebalance 与积压处理",
+          "path": "kafka/rebalance",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "可靠投递与故障恢复",
+          "path": "kafka/reliability",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "elasticsearch",
+      "title": "Elasticsearch",
+      "priority": "P1",
+      "chapters": [
+        {
+          "title": "倒排索引与分词",
+          "path": "es/inverted-index",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "分片、路由与副本",
+          "path": "es/shards",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "聚合、查询与深分页",
+          "path": "es/search",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "告警去重与索引设计",
+          "path": "es/alarm-design",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "network",
+      "title": "计算机网络",
+      "priority": "P1",
+      "chapters": [
+        {
+          "title": "TCP 连接与断开",
+          "path": "network/tcp",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "HTTP 与 HTTPS",
+          "path": "network/http",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "TIME_WAIT、连接池与超时",
+          "path": "network/connections",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "distributed",
+      "title": "分布式系统",
+      "priority": "P1",
+      "chapters": [
+        {
+          "title": "幂等与重试",
+          "path": "distributed/idempotency",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "限流、熔断与降级",
+          "path": "distributed/resilience",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "分布式事务与一致性",
+          "path": "distributed/transactions",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "algorithms",
+      "title": "算法与数据结构",
+      "priority": "P2",
+      "chapters": [
+        {
+          "title": "二分查找与复杂度",
+          "path": "algorithms/binary-search",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "链表与二叉树",
+          "path": "algorithms/list-tree",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "堆与优先队列",
+          "path": "algorithms/heap",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "经典面试题实战",
+          "path": "algorithms/interview",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-agent",
+      "title": "AI / Agent",
+      "priority": "P2",
+      "chapters": [
+        {
+          "title": "LLM 接入与 Tool Calling",
+          "path": "ai/tool-calling",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "RAG、向量与检索",
+          "path": "ai/rag",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "Agent 编排与 MCP",
+          "path": "ai/agent-mcp",
+          "status": "planned",
+          "note": ""
+        },
+        {
+          "title": "AI 服务可靠性",
+          "path": "ai/reliability",
+          "status": "planned",
+          "note": ""
+        }
+      ]
+    }
+  ]
+}
