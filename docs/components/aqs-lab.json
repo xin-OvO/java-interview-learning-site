@@ -1,0 +1,375 @@
+{
+  "title": "AQS 与 ReentrantLock：抢不到锁会怎样？",
+  "intro": "观察线程抢锁、入队、唤醒、再次争抢，以及“可重入”为什么不死锁。",
+  "modes": [
+    {
+      "id": "contention",
+      "name": "锁竞争 / 等待队列",
+      "subtitle": "两线程竞争同一把 ReentrantLock，先演示一种成功排队的路径。"
+    },
+    {
+      "id": "reentrant",
+      "name": "可重入锁计数",
+      "subtitle": "同一个线程连续 lock() 两次，state 计数如何变化？"
+    },
+    {
+      "id": "barging",
+      "name": "非公平插队",
+      "subtitle": "非公平锁下，新来的线程可能先获得锁；不是必然插队。"
+    }
+  ],
+  "scenarios": {
+    "contention": [
+      {
+        "headline": "空闲：没有持有者",
+        "note": "概念上 ReentrantLock 独占持有者为空，state=0。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "无人",
+            "detail": "state=0"
+          },
+          {
+            "label": "AQS 等待队列",
+            "value": "空",
+            "detail": "没有阻塞的竞争者"
+          },
+          {
+            "label": "线程 B",
+            "value": "准备获取",
+            "detail": "lock()"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      },
+      {
+        "headline": "A 获得锁",
+        "note": "A 调用 lock 成功；state 从 0 变成 1。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "线程 A",
+            "detail": "state=1"
+          },
+          {
+            "label": "AQS 等待队列",
+            "value": "空",
+            "detail": "—"
+          },
+          {
+            "label": "线程 B",
+            "value": "尚未获取",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": "lock.lock(); // A"
+      },
+      {
+        "headline": "B 争锁失败，进入等待队列",
+        "note": "B 的获取尝试失败；经 AQS 入队并按条件 park 等待，不应在应用代码中自旋死等。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "线程 A",
+            "detail": "继续处理临界区"
+          },
+          {
+            "label": "AQS 等待队列",
+            "value": "head → B",
+            "detail": "简化队列示意"
+          },
+          {
+            "label": "线程 B",
+            "value": "等待中",
+            "detail": "可能 park"
+          }
+        ],
+        "focus": 1,
+        "code": "lock.lock(); // B 竞争未成功"
+      },
+      {
+        "headline": "A 解锁，允许后续竞争",
+        "note": "A unlock 使 state 归零；AQS 可以唤醒合适的后继等待者。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "无人",
+            "detail": "state=0"
+          },
+          {
+            "label": "AQS 等待队列",
+            "value": "head → B",
+            "detail": "可被唤醒"
+          },
+          {
+            "label": "线程 B",
+            "value": "被通知",
+            "detail": "但尚未保证拿到锁"
+          }
+        ],
+        "focus": 2,
+        "code": "lock.unlock(); // A"
+      },
+      {
+        "headline": "B 再次尝试，获得锁",
+        "note": "被唤醒 ≠ 锁已自动转交；B 重新检查获取条件，成功后才是持有者。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "线程 B",
+            "detail": "state=1"
+          },
+          {
+            "label": "AQS 等待队列",
+            "value": "B 出队",
+            "detail": "已成功获取"
+          },
+          {
+            "label": "线程 B",
+            "value": "执行临界区",
+            "detail": "真正拿到锁"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      },
+      {
+        "headline": "B 解锁，恢复空闲",
+        "note": "锁的获取与释放必须匹配，推荐 try/finally。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "无人",
+            "detail": "state=0"
+          },
+          {
+            "label": "AQS 等待队列",
+            "value": "空",
+            "detail": "—"
+          },
+          {
+            "label": "线程 B",
+            "value": "完成",
+            "detail": "释放成功"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      }
+    ],
+    "reentrant": [
+      {
+        "headline": "初始无人持有",
+        "note": "同一个线程再次获取自己已持有的锁，不需要等待自己。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "准备 lock",
+            "detail": "—"
+          },
+          {
+            "label": "state",
+            "value": "0",
+            "detail": "完全空闲"
+          },
+          {
+            "label": "其他线程 B",
+            "value": "—",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "A 第一次 lock",
+        "note": "state 由 0→1，owner=A。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "持锁",
+            "detail": "owner=A"
+          },
+          {
+            "label": "state",
+            "value": "1",
+            "detail": "重入次数为 1"
+          },
+          {
+            "label": "其他线程 B",
+            "value": "等待机会",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "A 第二次 lock",
+        "note": "识别 owner 仍是 A，重入计数从 1→2；无需排队。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "再次进入",
+            "detail": "同一线程"
+          },
+          {
+            "label": "state",
+            "value": "2",
+            "detail": "重入计数为 2"
+          },
+          {
+            "label": "其他线程 B",
+            "value": "仍不能进入",
+            "detail": "A 未完全释放"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "A 第一次 unlock",
+        "note": "state 由 2→1，锁仍属于 A；B 仍进不来。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "仍持有",
+            "detail": "还欠一次 unlock"
+          },
+          {
+            "label": "state",
+            "value": "1",
+            "detail": "尚未释放干净"
+          },
+          {
+            "label": "其他线程 B",
+            "value": "等待",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "A 第二次 unlock",
+        "note": "state 由 1→0，此时才真正释放独占锁。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "已释放",
+            "detail": "owner 清空"
+          },
+          {
+            "label": "state",
+            "value": "0",
+            "detail": "可供其他线程竞争"
+          },
+          {
+            "label": "其他线程 B",
+            "value": "可争抢",
+            "detail": "没有直接保证获胜"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      }
+    ],
+    "barging": [
+      {
+        "headline": "A 持锁，B 已排队",
+        "note": "非公平 ReentrantLock 默认可能允许新竞争者越过队列等待者。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "持有锁",
+            "detail": "state=1"
+          },
+          {
+            "label": "队列",
+            "value": "B 等待",
+            "detail": "head → B"
+          },
+          {
+            "label": "线程 C",
+            "value": "尚未到来",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "A 释放锁，B 尚未真正获取",
+        "note": "B 可能被唤醒，但还没有完成后续 tryAcquire。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "无人",
+            "detail": "state=0"
+          },
+          {
+            "label": "队列",
+            "value": "B 已唤醒",
+            "detail": "正在争取机会"
+          },
+          {
+            "label": "线程 C",
+            "value": "刚好到来",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "C 先 CAS 获得锁",
+        "note": "非公平模式的一条可能执行路径是 C 抢在 B 之前成功获取。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "线程 C",
+            "detail": "state=1"
+          },
+          {
+            "label": "队列",
+            "value": "B 仍在等待",
+            "detail": "尚未成功"
+          },
+          {
+            "label": "线程 C",
+            "value": "成功插队",
+            "detail": "并非每次都会发生"
+          }
+        ],
+        "focus": 2,
+        "code": ""
+      },
+      {
+        "headline": "C 释放后，B 才获取",
+        "note": "默认非公平锁提升吞吐的机会，但不能保证队列严格 FIFO 获取。",
+        "cards": [
+          {
+            "label": "锁持有者",
+            "value": "线程 B",
+            "detail": "最终成功"
+          },
+          {
+            "label": "队列",
+            "value": "清空",
+            "detail": "—"
+          },
+          {
+            "label": "线程 C",
+            "value": "完成",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      }
+    ]
+  },
+  "footnote": "AQS 队列为教学简化模型，未展示实际节点状态、取消、竞争窗口和实现细节；唤醒不等于直接把锁交给下一个线程。"
+}

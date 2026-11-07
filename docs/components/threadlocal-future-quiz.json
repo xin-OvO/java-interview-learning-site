@@ -1,0 +1,32 @@
+[
+  {
+    "question": "线程池中的一个工作线程处理完请求，ThreadLocal 的值默认会自动清空吗？",
+    "choices": [
+      "会，任务结束就销毁 ThreadLocalMap",
+      "不会，应在 finally 中 remove",
+      "只要有 volatile 就会"
+    ],
+    "correct": 1,
+    "explanation": "ThreadLocalMap 依赖线程的生命周期；池线程复用时旧值可能残留。"
+  },
+  {
+    "question": "主线程执行 USER.set(\"A\") 后，supplyAsync 里的工作线程调用普通 USER.get()，默认会拿到 A 吗？",
+    "choices": [
+      "一定拿到",
+      "不保证，通常工作线程的映射是独立的",
+      "会自动创建 A 的深拷贝"
+    ],
+    "correct": 1,
+    "explanation": "普通 ThreadLocal 不具备跨线程的自动传播能力；显式传参更容易审计。"
+  },
+  {
+    "question": "CompletableFuture 的 thenApplyAsync 默认一定新建线程吗？",
+    "choices": [
+      "是，每次都 new Thread",
+      "否，默认异步执行器有既定策略，不保证独占新线程",
+      "和 thenApply 完全相同"
+    ],
+    "correct": 1,
+    "explanation": "Async 代表异步执行策略；默认通常是 ForkJoinPool.commonPool，具体行为与 JDK 环境有关。"
+  }
+]

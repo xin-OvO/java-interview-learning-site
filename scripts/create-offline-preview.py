@@ -1,18 +1,115 @@
-"""只生成免安装预览壳；正式内容维护在 docs/ Markdown + Vue。"""
-import json, html
+"""从同一本书的 Markdown/JSON 自动产生无依赖浏览器预览。
+
+知识正文唯一来源为 docs/**/*.md，动画步骤/题目唯一来源为 docs/components/*.json。
+生成的 PREVIEW.html 不能当成另一份课程源码进行手工维护。
+"""
+from __future__ import annotations
+import html
+import json
+import re
 from pathlib import Path
-root=Path(__file__).resolve().parent.parent
-st=json.loads((root/'content-status.json').read_text())
-total=sum(len(m['chapters']) for m in st['modules'])
-ready=sum(c['status']=='ready' for m in st['modules'] for c in m['chapters'])
-items=[]
-for m in st['modules']:
-  n=sum(c['status']=='ready' for c in m['chapters'])
-  items.append(f'<div class="module"><span class="priority">{m["priority"]}</span><span>{html.escape(m["title"])}</span><small>{n}/{len(m["chapters"])}</small></div>')
-modules='\n'.join(items)
-page='''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>互动教材：项目结构预览</title><style>
-:root{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;color:#162b42;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.head{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#10253a;color:white;padding:17px 26px}.head strong{font-size:16px}.head span{font-size:12px;color:#a1e8dd}.layout{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 58px)}aside{background:#fff;border-right:1px solid #dbe5ee;padding:22px 15px}.kicker{font-size:11px;font-weight:800;letter-spacing:.08em;color:#7790a8;margin:0 10px 10px}.module{display:flex;align-items:center;gap:8px;padding:10px 11px;border-radius:9px;font-size:13px;color:#43576a}.module small{margin-left:auto;color:#7895a5}.module:nth-of-type(2){background:#e7f7f3;color:#057e68;font-weight:800}.priority{background:#eef2f6;padding:3px 5px;border-radius:5px;font-size:10px;color:#677d8d}main{min-width:0;padding:22px;max-width:1400px;width:100%;margin:0 auto}.notice{background:#ecfaf6;border:1px solid #b9e6da;border-radius:12px;padding:17px 19px;font-size:14px;line-height:1.8}.notice strong{color:#087d6c}.notice p{margin:6px 0 0;color:#426179}.header{margin:18px 0;display:flex;align-items:center;justify-content:space-between;gap:12px}.header h1{font-size:22px;margin:0}.stats{font-size:12px;color:#648092}.frame{border:1px solid #dce5ed;border-radius:14px;overflow:hidden;background:white;box-shadow:0 10px 35px rgba(22,41,64,.08)}iframe{border:0;width:100%;height:970px;display:block}.footer{font-size:12px;color:#7790a8;margin:14px 0 18px}@media(max-width:900px){.layout{grid-template-columns:1fr}aside{display:none}.head{padding:15px}main{padding:12px}iframe{height:900px}.header h1{font-size:18px}}
-</style></head><body><div class="head"><strong>☕ Java 后端 · 互动知识手册</strong><span>单一项目 · 渐进更新</span></div><div class="layout"><aside><div class="kicker">全书目录 · 可阅读章节</div>MODULES</aside><main><div class="notice"><strong>免安装结构预览</strong><p>下方嵌入此前已完成的 JMM 独立动画，演示统一网站的课程入口。正式课程正文位于 <code>docs/java/concurrency/jmm-happens-before.md</code>，动画已改为可复用的 Vue 组件；打开正式 VitePress 网站才是以后逐章扩展的完整样式。此页仅供不安装 npm 时快速查看，不是第二套需要维护的教材。</p></div><div class="header"><h1>第一课 · JMM 与 happens-before</h1><span class="stats">已可读 READY / TOTAL · 其余继续补充</span></div><div class="frame"><iframe loading="eager" title="JMM 交互动画旧版归档" src="docs/public/legacy/jmm-original.html"></iframe></div><div class="footer">正式项目：运行 npm install && npm run dev；导航会按 content-status.json 自动加入新章节。</div></main></div></body></html>'''
-page=page.replace('MODULES',modules).replace('READY',str(ready)).replace('TOTAL',str(total))
-(root/'PREVIEW.html').write_text(page,encoding='utf-8')
-print(root/'PREVIEW.html')
+
+from markdown_it import MarkdownIt
+
+ROOT = Path(__file__).resolve().parent.parent
+DOCS = ROOT / 'docs'
+state = json.loads((ROOT / 'content-status.json').read_text('utf8'))
+chapters = [(module, chapter) for module in state['modules'] for chapter in module['chapters'] if chapter['status'] == 'ready']
+all_ready = {ch['path'] for _, ch in chapters}
+markdown = MarkdownIt('default', {'html': True, 'linkify': False}).enable('table')
+
+
+def encoded_json(value):
+    return json.dumps(value, ensure_ascii=False).replace('</', '<\\/').replace('\u2028', '\\u2028').replace('\u2029', '\\u2029')
+
+
+def render_body(chapter):
+    path = chapter['path']
+    if path == 'java/concurrency/jmm-happens-before':
+        return ('<div class="legacy-note">第一章在离线版使用原有互动演示；VitePress 正式版以本项目中的 JMM Markdown 与 Vue 组件为准。</div>'
+                '<iframe class="legacy-frame" loading="lazy" title="JMM happens-before 动态示范" '
+                'src="docs/public/legacy/jmm-original.html"></iframe>')
+    source = (DOCS / f'{path}.md').read_text('utf8')
+    source = re.sub(r'\A---\n.*?\n---\s*\n', '', source, count=1, flags=re.S)
+    # Vue setup 部分只是正式站点引用，离线版根据同名变量找动画 JSON。
+    m = re.search(r'<script setup>(.*?)</script>', source, flags=re.S)
+    imported = dict(re.findall(r"import\s+(\w+)\s+from\s+['\"]\.\./\.\./components/([^'\"]+\.json)['\"]", m.group(1) if m else ''))
+    source = re.sub(r'<script setup>.*?</script>\s*', '', source, count=1, flags=re.S)
+
+    def step_placeholder(m):
+        var = m.group(1)
+        filename = imported.get(var)
+        if not filename or not (DOCS/'components'/filename).is_file():
+            raise RuntimeError(f'{path}: StepLab 数据引用无效: {var}')
+        key = filename.removesuffix('.json')
+        labs[key] = json.loads((DOCS/'components'/filename).read_text('utf8'))
+        return f'\n<div class="generic-lab" data-lab="{html.escape(key)}"></div>\n'
+
+    def quiz_placeholder(m):
+        var = m.group(1)
+        filename = imported.get(var)
+        if not filename or not (DOCS/'components'/filename).is_file():
+            raise RuntimeError(f'{path}: KnowledgeQuiz 数据引用无效: {var}')
+        key = filename.removesuffix('.json')
+        quizzes[key] = json.loads((DOCS/'components'/filename).read_text('utf8'))
+        return f'\n<div class="generic-quiz" data-quiz="{html.escape(key)}"></div>\n'
+
+    source = re.sub(r'<StepLab\s+:lab="(\w+)"\s*/>', step_placeholder, source)
+    source = re.sub(r'<KnowledgeQuiz\s+:questions="(\w+)"\s*/>', quiz_placeholder, source)
+    if '<CounterRaceLab />' in source:
+        labs['legacy-counter'] = json.loads((DOCS/'components/counter-scenarios.json').read_text('utf8'))
+        source = source.replace('<CounterRaceLab />', '\n<div class="old-counter-lab"></div>\n')
+    if '<AtomicityQuiz />' in source:
+        quizzes['legacy-atomicity'] = json.loads((DOCS/'components/atomicity-questions.json').read_text('utf8'))
+        source = source.replace('<AtomicityQuiz />', '\n<div class="generic-quiz" data-quiz="legacy-atomicity"></div>\n')
+
+    # Markdown 扩展 ::: tip/warning/info => 离线提示框（与 VitePress 语义一致）。
+    blocks = {}
+    def replace_block(match):
+        kind, title, content = match.group(1), match.group(2).strip(), match.group(3)
+        token = f'OFFLINEBLOCKTOKEN{len(blocks)}'
+        blocks[token] = f'<aside class="admon admon-{kind}"><strong>{html.escape(title or kind.upper())}</strong>{markdown.render(content)}</aside>'
+        return f'\n\n{token}\n\n'
+    source = re.sub(r'^::: (tip|info|warning|danger|details)([^\n]*)\n(.*?)^:::\s*$', replace_block, source, flags=re.M|re.S)
+
+    def localize_link(match):
+        slug = match.group(1)
+        return f'](#{slug})' if slug in all_ready else f'](#not-ready)'
+    source = re.sub(r'\]\(/([^\)]+)\)', localize_link, source)
+    rendered = markdown.render(source)
+    for token, block in blocks.items():
+        rendered = rendered.replace(f'<p>{token}</p>', block).replace(token, block)
+    return rendered
+
+labs, quizzes = {}, {}
+pages = []
+for module, chapter in chapters:
+    path = chapter['path']
+    pages.append((path, module, chapter, render_body(chapter)))
+
+# 同一导航拥有 6 章。导航名和顺序来自内容状态，不写死额外课程。
+nav_html = ''.join(
+    f'<div class="sidebar-group"><strong>{html.escape(m["priority"])} · {html.escape(m["title"])}</strong>' +
+    ''.join(f'<button data-open="{html.escape(ch["path"])}">{html.escape(ch["title"])}</button>'
+            for mm,ch in chapters if mm is m) + '</div>'
+    for m in state['modules'] if any(mm is m for mm,_ in chapters)
+)
+ready = len(chapters)
+total = sum(len(x['chapters']) for x in state['modules'])
+initial = pages[-1][0]
+sections = '\n'.join(
+    f'<section id="{html.escape(path)}" class="chapter" data-title="{html.escape(ch["title"])}">'
+    f'<div class="chapter-kicker">{html.escape(mod["title"])} · 第 {i+1} 节</div>{body}</section>'
+    for i,(path,mod,ch,body) in enumerate(pages)
+)
+
+TEMPLATE = (ROOT/'scripts/offline-preview-template.html').read_text('utf8')
+page = (TEMPLATE.replace('@@NAV@@', nav_html)
+        .replace('@@SECTIONS@@', sections)
+        .replace('@@READY@@', str(ready))
+        .replace('@@TOTAL@@', str(total))
+        .replace('@@INITIAL@@', encoded_json(initial))
+        .replace('@@LABS@@', encoded_json(labs))
+        .replace('@@QUIZZES@@', encoded_json(quizzes)))
+(ROOT/'PREVIEW.html').write_text(page,encoding='utf8')
+print(f"✓ PREVIEW.html：{ready} 章，{len(labs)} 组动画，{len(quizzes)} 组测验，{len(page)} 字符")

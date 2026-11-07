@@ -1,0 +1,422 @@
+{
+  "title": "线程池 execute()：任务会流向哪里？",
+  "intro": "同样是提交一个任务，为什么有时创建线程，有时先进队列，还有时直接拒绝？",
+  "modes": [
+    {
+      "id": "bounded",
+      "name": "有界队列 · 4 个任务",
+      "subtitle": "core=1、max=2、queue容量=1；为便于观察，工作任务先保持忙碌。"
+    },
+    {
+      "id": "unbounded",
+      "name": "无界队列现象",
+      "subtitle": "core=1、max=3、LinkedBlockingQueue 默认理论容量极大；队列会优先接收。"
+    },
+    {
+      "id": "shutdown",
+      "name": "关闭后的任务",
+      "subtitle": "调用 shutdown() 后，不再接受新任务；已提交任务按规则继续处理。"
+    }
+  ],
+  "scenarios": {
+    "bounded": [
+      {
+        "headline": "创建线程池，还没有任务",
+        "note": "核心线程不一定预先创建，默认一般按需创建。",
+        "cards": [
+          {
+            "label": "核心工作线程",
+            "value": "0 / 1",
+            "detail": "尚未启动"
+          },
+          {
+            "label": "等待队列",
+            "value": "0 / 1",
+            "detail": "空"
+          },
+          {
+            "label": "非核心扩展线程",
+            "value": "0 / 1",
+            "detail": "尚未启动"
+          },
+          {
+            "label": "提交结果",
+            "value": "准备中",
+            "detail": "core=1 max=2"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      },
+      {
+        "headline": "任务 T1：先创建核心线程",
+        "note": "当前 worker 数 0 小于 corePoolSize 1，优先 addWorker(T1,true)。",
+        "cards": [
+          {
+            "label": "核心工作线程",
+            "value": "1 / 1",
+            "detail": "正在处理 T1"
+          },
+          {
+            "label": "等待队列",
+            "value": "0 / 1",
+            "detail": "空"
+          },
+          {
+            "label": "非核心扩展线程",
+            "value": "0 / 1",
+            "detail": "空"
+          },
+          {
+            "label": "提交结果",
+            "value": "T1 接收",
+            "detail": "开始执行"
+          }
+        ],
+        "focus": 0,
+        "code": "execute(T1);  // 新建核心 worker"
+      },
+      {
+        "headline": "任务 T2：入队，而不是立刻扩容",
+        "note": "核心线程数已到 core；工作队列仍有空间，因此 offer(T2) 成功。",
+        "cards": [
+          {
+            "label": "核心工作线程",
+            "value": "1 / 1",
+            "detail": "T1 仍忙"
+          },
+          {
+            "label": "等待队列",
+            "value": "1 / 1",
+            "detail": "队列中 T2"
+          },
+          {
+            "label": "非核心扩展线程",
+            "value": "0 / 1",
+            "detail": "未启动"
+          },
+          {
+            "label": "提交结果",
+            "value": "T2 接收",
+            "detail": "等待执行"
+          }
+        ],
+        "focus": 1,
+        "code": "execute(T2);  // 入队"
+      },
+      {
+        "headline": "任务 T3：队列满，才尝试扩容",
+        "note": "T1 忙、队列满，worker 数 1 小于 maximumPoolSize 2，于是新建第二个 worker。",
+        "cards": [
+          {
+            "label": "核心工作线程",
+            "value": "1 / 1",
+            "detail": "T1 忙"
+          },
+          {
+            "label": "等待队列",
+            "value": "1 / 1",
+            "detail": "T2 等待"
+          },
+          {
+            "label": "非核心扩展线程",
+            "value": "1 / 1",
+            "detail": "执行 T3"
+          },
+          {
+            "label": "提交结果",
+            "value": "T3 接收",
+            "detail": "创建扩展线程"
+          }
+        ],
+        "focus": 2,
+        "code": ""
+      },
+      {
+        "headline": "任务 T4：队列满且线程达到 max",
+        "note": "不能再入队，也不能再扩容。AbortPolicy 抛出 RejectedExecutionException。",
+        "cards": [
+          {
+            "label": "核心工作线程",
+            "value": "1 / 1",
+            "detail": "T1 忙"
+          },
+          {
+            "label": "等待队列",
+            "value": "1 / 1",
+            "detail": "T2 等待"
+          },
+          {
+            "label": "非核心扩展线程",
+            "value": "1 / 1",
+            "detail": "T3 忙"
+          },
+          {
+            "label": "提交结果",
+            "value": "T4 被拒绝",
+            "detail": "AbortPolicy 抛异常"
+          }
+        ],
+        "focus": 3,
+        "code": "execute(T4); // RejectedExecutionException"
+      },
+      {
+        "headline": "T1/T3 结束后，线程可以取队列任务",
+        "note": "工作线程空闲后会继续尝试从队列获取 T2；不是 T2 自动创建额外线程。",
+        "cards": [
+          {
+            "label": "核心工作线程",
+            "value": "可用",
+            "detail": "可能取走 T2"
+          },
+          {
+            "label": "等待队列",
+            "value": "0 / 1",
+            "detail": "T2 被取走"
+          },
+          {
+            "label": "非核心扩展线程",
+            "value": "可用",
+            "detail": "空闲后受 keepAlive 影响"
+          },
+          {
+            "label": "提交结果",
+            "value": "T1/T2/T3 可完成",
+            "detail": "T4 没有执行"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      }
+    ],
+    "unbounded": [
+      {
+        "headline": "先有一个核心线程处理 T1",
+        "note": "core=1，max=3；T1 占用核心线程。",
+        "cards": [
+          {
+            "label": "核心线程",
+            "value": "1 / 1",
+            "detail": "处理 T1"
+          },
+          {
+            "label": "LinkedBlockingQueue",
+            "value": "0",
+            "detail": "默认理论容量很大"
+          },
+          {
+            "label": "额外线程",
+            "value": "0 / 2",
+            "detail": "尚未扩容"
+          },
+          {
+            "label": "提交结果",
+            "value": "T1 接收",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      },
+      {
+        "headline": "T2 到来：队列 offer 成功",
+        "note": "未到容量上限，按 execute() 逻辑不会尝试扩容。",
+        "cards": [
+          {
+            "label": "核心线程",
+            "value": "1 / 1",
+            "detail": "T1 忙"
+          },
+          {
+            "label": "LinkedBlockingQueue",
+            "value": "1",
+            "detail": "T2 排队"
+          },
+          {
+            "label": "额外线程",
+            "value": "0 / 2",
+            "detail": "没有创建"
+          },
+          {
+            "label": "提交结果",
+            "value": "T2 排队",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "T3、T4 继续进入队列",
+        "note": "即便 maximumPoolSize=3，也不会因为 T2/T3 排队就立刻创建三个线程。",
+        "cards": [
+          {
+            "label": "核心线程",
+            "value": "1 / 1",
+            "detail": "仍在工作"
+          },
+          {
+            "label": "LinkedBlockingQueue",
+            "value": "3",
+            "detail": "T2、T3、T4"
+          },
+          {
+            "label": "额外线程",
+            "value": "0 / 2",
+            "detail": "未达到扩容条件"
+          },
+          {
+            "label": "提交结果",
+            "value": "都已接收",
+            "detail": "积压可能增加"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "危险：队列可能持续增长",
+        "note": "默认队列不是数学上的无限，而是 Integer.MAX_VALUE 容量；生产速度持续高于消费速度会占用更多内存。",
+        "cards": [
+          {
+            "label": "核心线程",
+            "value": "1 / 1",
+            "detail": "吞吐受限"
+          },
+          {
+            "label": "LinkedBlockingQueue",
+            "value": "不断增长",
+            "detail": "风险：内存占用上升"
+          },
+          {
+            "label": "额外线程",
+            "value": "0 / 2",
+            "detail": "max 并未起作用"
+          },
+          {
+            "label": "提交结果",
+            "value": "表面未拒绝",
+            "detail": "不代表安全"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      }
+    ],
+    "shutdown": [
+      {
+        "headline": "RUNNING：线程池接收新任务",
+        "note": "execute(T1) 可以按照容量路径接收。",
+        "cards": [
+          {
+            "label": "运行状态",
+            "value": "RUNNING",
+            "detail": "允许提交"
+          },
+          {
+            "label": "队列",
+            "value": "有 T2",
+            "detail": "已有任务"
+          },
+          {
+            "label": "工作线程",
+            "value": "执行 T1",
+            "detail": "有任务在运行"
+          },
+          {
+            "label": "新任务 T3",
+            "value": "尚未提交",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      },
+      {
+        "headline": "调用 shutdown()",
+        "note": "进入 SHUTDOWN：不接受新任务，仍处理队列中的已有任务。",
+        "cards": [
+          {
+            "label": "运行状态",
+            "value": "SHUTDOWN",
+            "detail": "拒绝新提交"
+          },
+          {
+            "label": "队列",
+            "value": "T2 仍在",
+            "detail": "等待被执行"
+          },
+          {
+            "label": "工作线程",
+            "value": "T1 继续",
+            "detail": "不会立刻中断所有任务"
+          },
+          {
+            "label": "新任务 T3",
+            "value": "尚未提交",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": "pool.shutdown();"
+      },
+      {
+        "headline": "新提交 T3 会被拒绝",
+        "note": "即使队列有空位，也不能因为池已关闭而继续接收。",
+        "cards": [
+          {
+            "label": "运行状态",
+            "value": "SHUTDOWN",
+            "detail": "不可重新接收"
+          },
+          {
+            "label": "队列",
+            "value": "已有 T2",
+            "detail": "照常处理"
+          },
+          {
+            "label": "工作线程",
+            "value": "继续处理",
+            "detail": "—"
+          },
+          {
+            "label": "新任务 T3",
+            "value": "拒绝 ×",
+            "detail": "执行拒绝策略"
+          }
+        ],
+        "focus": 3,
+        "code": ""
+      },
+      {
+        "headline": "完成既有任务后，池可终止",
+        "note": "shutdown() 不保证立刻结束；可以 awaitTermination 等待完成。",
+        "cards": [
+          {
+            "label": "运行状态",
+            "value": "TERMINATED",
+            "detail": "示例中的任务均完成"
+          },
+          {
+            "label": "队列",
+            "value": "空",
+            "detail": "—"
+          },
+          {
+            "label": "工作线程",
+            "value": "已退出",
+            "detail": "—"
+          },
+          {
+            "label": "新任务 T3",
+            "value": "未执行",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      }
+    ]
+  },
+  "footnote": "按 ThreadPoolExecutor.execute 的典型控制流程做教学模拟，未展示所有状态竞争与二次校验细节；真实线程调度及队列出队顺序可能不同。"
+}

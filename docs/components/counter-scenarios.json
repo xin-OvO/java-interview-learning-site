@@ -1,0 +1,362 @@
+{
+  "modes": [
+    {
+      "id": "volatile",
+      "name": "volatile count++",
+      "subtitle": "读得到更新，不代表两个人不会同时改同一份旧值"
+    },
+    {
+      "id": "atomic",
+      "name": "AtomicInteger",
+      "subtitle": "一个线程更新成功后，另一个线程必须基于新值重试"
+    },
+    {
+      "id": "lock",
+      "name": "synchronized",
+      "subtitle": "同一把锁让两个线程依次完成整个读—改—写"
+    }
+  ],
+  "scenarios": {
+    "volatile": [
+      {
+        "actor": "",
+        "action": "准备",
+        "value": 0,
+        "a": "—",
+        "b": "—",
+        "aState": "待执行",
+        "bState": "待执行",
+        "note": "共享的 volatile count = 0。A、B 各准备执行一次 count++。按预期，最后应该是 2。",
+        "codeA": "",
+        "codeB": ""
+      },
+      {
+        "actor": "A",
+        "action": "读取",
+        "value": 0,
+        "a": "0",
+        "b": "—",
+        "aState": "已读到 0",
+        "bState": "待执行",
+        "note": "A 读取 count，得到 0，保存在自己的临时计算中。读到的是此刻的有效值，不意味着别人不能在 A 写回前读取。",
+        "codeA": "读取 count → 0",
+        "codeB": ""
+      },
+      {
+        "actor": "B",
+        "action": "读取",
+        "value": 0,
+        "a": "0",
+        "b": "0",
+        "aState": "准备加一",
+        "bState": "已读到 0",
+        "note": "A 还没有写回，B 此时读取同一个 volatile count，也正确地得到 0。两次 volatile 读取都没有“读错”，但它们读到了同一个旧值。",
+        "codeA": "",
+        "codeB": "读取 count → 0"
+      },
+      {
+        "actor": "A",
+        "action": "加一",
+        "value": 0,
+        "a": "1",
+        "b": "0",
+        "aState": "算出 1，尚未写回",
+        "bState": "准备加一",
+        "note": "A 在自己的临时值上做 0 + 1 = 1。此时共享的 count 仍然是 0。",
+        "codeA": "临时值 0 + 1 → 1",
+        "codeB": ""
+      },
+      {
+        "actor": "B",
+        "action": "加一",
+        "value": 0,
+        "a": "1",
+        "b": "1",
+        "aState": "等待写回",
+        "bState": "算出 1，尚未写回",
+        "note": "B 也做 0 + 1 = 1。请注意：虽然两个人都算过一次“+1”，共享变量尚未发生任何变化。",
+        "codeA": "",
+        "codeB": "临时值 0 + 1 → 1"
+      },
+      {
+        "actor": "A",
+        "action": "写回",
+        "value": 1,
+        "a": "1",
+        "b": "1",
+        "aState": "已写回 1",
+        "bState": "等待写回",
+        "note": "A 把 1 写回 volatile count。写入是可见的，但 B 早已基于旧值算好了 1。",
+        "codeA": "写 count = 1",
+        "codeB": ""
+      },
+      {
+        "actor": "B",
+        "action": "写回",
+        "value": 1,
+        "a": "1",
+        "b": "1",
+        "aState": "结束",
+        "bState": "已写回 1",
+        "note": "B 把它之前算好的 1 再写回。共享 count 仍是 1：本该有 2 次加一，实际只保留了 1 次。",
+        "codeA": "",
+        "codeB": "写 count = 1"
+      },
+      {
+        "actor": "",
+        "action": "结果",
+        "value": 1,
+        "a": "1",
+        "b": "1",
+        "aState": "完成一次 ++",
+        "bState": "完成一次 ++",
+        "note": "结果是 1（丢失更新）。问题是“读—改—写没有整体原子性”，并不是 volatile 读取失效，也不需要发生指令重排。",
+        "codeA": "",
+        "codeB": ""
+      }
+    ],
+    "atomic": [
+      {
+        "actor": "",
+        "action": "准备",
+        "value": 0,
+        "a": "—",
+        "b": "—",
+        "aState": "待执行",
+        "bState": "待执行",
+        "note": "AtomicInteger count = new AtomicInteger(0)。A、B 都调用 incrementAndGet()。下面用 CAS 重试的概念模型演示，不代表某个 JDK 必定逐条执行这些指令。",
+        "codeA": "",
+        "codeB": ""
+      },
+      {
+        "actor": "A",
+        "action": "尝试更新",
+        "value": 0,
+        "a": "期望 0",
+        "b": "—",
+        "aState": "准备把 0 改成 1",
+        "bState": "待执行",
+        "note": "A 准备原子更新：只有当前值仍是 0，才可以改为 1。这个“比较并更新”的整体动作叫 CAS。",
+        "codeA": "准备 CAS(0, 1)",
+        "codeB": ""
+      },
+      {
+        "actor": "B",
+        "action": "尝试更新",
+        "value": 0,
+        "a": "期望 0",
+        "b": "期望 0",
+        "aState": "准备提交",
+        "bState": "也准备把 0 改成 1",
+        "note": "B 也基于旧值 0 准备更新。但 CAS 不会无条件覆盖别人刚写入的新值。",
+        "codeA": "",
+        "codeB": "准备 CAS(0, 1)"
+      },
+      {
+        "actor": "A",
+        "action": "CAS 成功",
+        "value": 1,
+        "a": "1 ✓",
+        "b": "期望 0",
+        "aState": "更新成功",
+        "bState": "准备提交",
+        "note": "A 的 CAS 成功：count 从 0 原子地改为 1。",
+        "codeA": "CAS(0, 1) → 成功",
+        "codeB": ""
+      },
+      {
+        "actor": "B",
+        "action": "CAS 失败",
+        "value": 1,
+        "a": "1 ✓",
+        "b": "失败，需重试",
+        "aState": "完成",
+        "bState": "发现值已变为 1",
+        "note": "B 原本期望 count 还是 0，但实际上已经是 1，因此不能覆盖成 1。CAS 失败，必须重新尝试。",
+        "codeA": "",
+        "codeB": "CAS(0, 1) → 失败"
+      },
+      {
+        "actor": "B",
+        "action": "重新读取",
+        "value": 1,
+        "a": "1 ✓",
+        "b": "期望 1",
+        "aState": "完成",
+        "bState": "重新准备 1 → 2",
+        "note": "B 基于现在的值 1，重新计算新值 2。这里是“失败后重试”的关键。",
+        "codeA": "",
+        "codeB": "重新准备 CAS(1, 2)"
+      },
+      {
+        "actor": "B",
+        "action": "CAS 成功",
+        "value": 2,
+        "a": "1 ✓",
+        "b": "2 ✓",
+        "aState": "完成",
+        "bState": "更新成功",
+        "note": "B 的第二次 CAS 成功：count 从 1 原子地更新到 2。两次加一都保留下来了。",
+        "codeA": "",
+        "codeB": "CAS(1, 2) → 成功"
+      },
+      {
+        "actor": "",
+        "action": "结果",
+        "value": 2,
+        "a": "1 ✓",
+        "b": "2 ✓",
+        "aState": "完成一次更新",
+        "bState": "完成一次更新",
+        "note": "结果是 2。这里的核心不是“AtomicInteger 也有 volatile”，而是 incrementAndGet() 提供原子读—改—写语义。",
+        "codeA": "",
+        "codeB": ""
+      }
+    ],
+    "lock": [
+      {
+        "actor": "",
+        "action": "准备",
+        "value": 0,
+        "a": "—",
+        "b": "—",
+        "lock": "空闲",
+        "aState": "等待锁",
+        "bState": "等待锁",
+        "note": "A、B 都进入同一个 synchronized(lock) 临界区；锁对象必须相同。临界区里执行 count++。",
+        "codeA": "",
+        "codeB": ""
+      },
+      {
+        "actor": "A",
+        "action": "获取锁",
+        "value": 0,
+        "a": "—",
+        "b": "—",
+        "lock": "A 持有",
+        "aState": "进入临界区",
+        "bState": "等待锁",
+        "note": "A 先拿到锁。这一刻起，B 不能同时进入同一个锁保护的临界区。",
+        "codeA": "synchronized(lock) → 进入",
+        "codeB": ""
+      },
+      {
+        "actor": "A",
+        "action": "读取",
+        "value": 0,
+        "a": "0",
+        "b": "—",
+        "lock": "A 持有",
+        "aState": "读到 0",
+        "bState": "等待锁",
+        "note": "A 在锁内读取 count=0，准备加一。",
+        "codeA": "读取 count → 0",
+        "codeB": ""
+      },
+      {
+        "actor": "B",
+        "action": "尝试获取锁",
+        "value": 0,
+        "a": "0",
+        "b": "—",
+        "lock": "A 持有",
+        "aState": "正在计算",
+        "bState": "无法进入临界区",
+        "note": "B 来了，但锁还在 A 手上，所以 B 暂时不能执行同步块里的 count++。",
+        "codeA": "",
+        "codeB": "synchronized(lock) → 等待"
+      },
+      {
+        "actor": "A",
+        "action": "加一并写回",
+        "value": 1,
+        "a": "1",
+        "b": "—",
+        "lock": "A 持有",
+        "aState": "写回 1",
+        "bState": "继续等待",
+        "note": "A 在同一把锁保护下完成读、加、写。共享 count 变成 1。",
+        "codeA": "count = 0 + 1 → 1",
+        "codeB": ""
+      },
+      {
+        "actor": "A",
+        "action": "释放锁",
+        "value": 1,
+        "a": "1",
+        "b": "—",
+        "lock": "空闲",
+        "aState": "退出临界区",
+        "bState": "等待获取",
+        "note": "A 退出 synchronized，释放锁。接下来其他线程才有机会进入相同的同步块。",
+        "codeA": "释放 lock",
+        "codeB": ""
+      },
+      {
+        "actor": "B",
+        "action": "获取锁",
+        "value": 1,
+        "a": "1",
+        "b": "—",
+        "lock": "B 持有",
+        "aState": "完成",
+        "bState": "进入临界区",
+        "note": "B 获得同一把锁。A 释放锁发生在 B 后续获取这把锁之前，建立了对应的 happens-before 关系。",
+        "codeA": "",
+        "codeB": "进入 synchronized(lock)"
+      },
+      {
+        "actor": "B",
+        "action": "读取",
+        "value": 1,
+        "a": "1",
+        "b": "1",
+        "lock": "B 持有",
+        "aState": "完成",
+        "bState": "读到 1",
+        "note": "B 现在读取 count，得到 A 已写入的 1，而不是一起读取旧的 0。",
+        "codeA": "",
+        "codeB": "读取 count → 1"
+      },
+      {
+        "actor": "B",
+        "action": "加一并写回",
+        "value": 2,
+        "a": "1",
+        "b": "2",
+        "lock": "B 持有",
+        "aState": "完成",
+        "bState": "写回 2",
+        "note": "B 执行 1 + 1，再写回。共享 count 变成 2。",
+        "codeA": "",
+        "codeB": "count = 1 + 1 → 2"
+      },
+      {
+        "actor": "B",
+        "action": "释放锁",
+        "value": 2,
+        "a": "1",
+        "b": "2",
+        "lock": "空闲",
+        "aState": "完成",
+        "bState": "退出临界区",
+        "note": "B 释放锁。两个线程在同一个锁保护下依次完成了整个更新过程。",
+        "codeA": "",
+        "codeB": "释放 lock"
+      },
+      {
+        "actor": "",
+        "action": "结果",
+        "value": 2,
+        "a": "1",
+        "b": "2",
+        "lock": "空闲",
+        "aState": "完成",
+        "bState": "完成",
+        "note": "结果是 2。synchronized 的关键是互斥：不仅保证可见性，还让受同一把锁保护的整个操作不会并发交错。",
+        "codeA": "",
+        "codeB": ""
+      }
+    ]
+  }
+}

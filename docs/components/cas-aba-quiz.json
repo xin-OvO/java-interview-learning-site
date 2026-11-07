@@ -1,0 +1,32 @@
+[
+  {
+    "question": "AtomicInteger.compareAndSet(0,1) 失败以后会怎样？",
+    "choices": [
+      "自动无限重试",
+      "本次返回 false，是否重试由调用方决定",
+      "自动加锁等待"
+    ],
+    "correct": 1,
+    "explanation": "单次 compareAndSet 只做一次条件更新尝试；手写 CAS 循环才有重试逻辑。"
+  },
+  {
+    "question": "ABA 的关键问题是？",
+    "choices": [
+      "同一个值的读写都不原子",
+      "当前值恢复原样，但中途发生过变化",
+      "volatile 不能读取字符串"
+    ],
+    "correct": 1,
+    "explanation": "CAS 仅比较当前期望条件，无法仅凭相同数值识别 A→B→A 的历史。"
+  },
+  {
+    "question": "AtomicStampedReference 适合什么场景？",
+    "choices": [
+      "任何复杂事务都能自动解决",
+      "希望在 CAS 时同时校验版本号",
+      "自动避免 Integer 溢出"
+    ],
+    "correct": 1,
+    "explanation": "它把引用和 stamp 一起比较；仍需要定义版本更新策略，不保证解决所有业务一致性问题。"
+  }
+]

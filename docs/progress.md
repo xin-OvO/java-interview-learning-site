@@ -3,9 +3,9 @@
 
 > 这是**同一本**不断扩充的交互式知识手册：只有“首版可阅读”才展示为正文，未写的不假装完成。
 
-**共 13 个模块 / 53 个专题，首版可读 1，初稿 0，计划中 52。**
+**共 13 个模块 / 53 个专题，首版可读 6，初稿 0，计划中 47。**
 
-最后更新：2026-11-07
+最后更新：2026-11-08
 
 | 优先级 | 模块 | 章节 | 状态 |
 |---|---|---|---|
@@ -14,11 +14,11 @@
 | P0 | Java 集合 | 红黑树与 TreeMap | 尚未开始 |
 | P0 | Java 集合 | ArrayList 与 CopyOnWriteArrayList | 尚未开始 |
 | P0 | 多线程与 JMM | [JMM 与 happens-before](/java/concurrency/jmm-happens-before) | 首版可阅读 |
-| P0 | 多线程与 JMM | volatile：可见性与原子性 | 尚未开始 |
-| P0 | 多线程与 JMM | CAS、ABA 与 AtomicInteger | 尚未开始 |
-| P0 | 多线程与 JMM | AQS 与锁 | 尚未开始 |
-| P0 | 多线程与 JMM | 线程池 execute() 全流程 | 尚未开始 |
-| P0 | 多线程与 JMM | ThreadLocal 与 CompletableFuture | 尚未开始 |
+| P0 | 多线程与 JMM | [volatile：可见性与原子性](/java/concurrency/volatile-atomicity) | 首版可阅读 |
+| P0 | 多线程与 JMM | [CAS、ABA 与 AtomicInteger](/java/concurrency/cas-aba) | 首版可阅读 |
+| P0 | 多线程与 JMM | [AQS 与锁](/java/concurrency/aqs) | 首版可阅读 |
+| P0 | 多线程与 JMM | [线程池 execute() 全流程](/java/concurrency/thread-pool) | 首版可阅读 |
+| P0 | 多线程与 JMM | [ThreadLocal 与 CompletableFuture](/java/concurrency/thread-local) | 首版可阅读 |
 | P0 | JVM | 堆栈与对象生命周期 | 尚未开始 |
 | P0 | JVM | GC 与垃圾回收器 | 尚未开始 |
 | P0 | JVM | OOM 排查实战 | 尚未开始 |

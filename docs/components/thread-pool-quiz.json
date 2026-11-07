@@ -1,0 +1,32 @@
+[
+  {
+    "question": "core=2,max=8，队列还有空余空间，核心线程已达 2，execute 通常先？",
+    "choices": [
+      "先把线程扩到 8",
+      "尝试把任务放入队列",
+      "直接拒绝"
+    ],
+    "correct": 1,
+    "explanation": "execute 在核心线程达到阈值后，通常先 workQueue.offer(task)，队列失败才尝试扩容到 max。"
+  },
+  {
+    "question": "默认 LinkedBlockingQueue 队列容量很大时，maxPoolSize 常见的现象是？",
+    "choices": [
+      "立刻扩容到 max",
+      "大量任务排队，线程很可能长期停留在 core 附近",
+      "每个任务都有独立线程"
+    ],
+    "correct": 1,
+    "explanation": "队列 offer 通常成功，导致无法触发队列满后的扩容分支。"
+  },
+  {
+    "question": "shutdown() 之后执行 execute(newTask) 会怎样？",
+    "choices": [
+      "一定正常接收",
+      "按拒绝策略处理新任务",
+      "自动变成 shutdownNow()"
+    ],
+    "correct": 1,
+    "explanation": "SHUTDOWN 状态不再接受新任务，但先前任务仍可执行。"
+  }
+]

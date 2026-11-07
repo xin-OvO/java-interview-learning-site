@@ -1,7 +1,7 @@
 {
   "name": "java-interview-interactive-book",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "可渐进更新的 Java 后端面试互动知识手册",
   "scripts": {
@@ -10,7 +10,8 @@
     "preview": "vitepress preview docs --host 127.0.0.1",
     "check": "node scripts/check-content.mjs",
     "status": "node scripts/sync-progress.mjs",
-    "start:chapter": "node scripts/start-chapter.mjs"
+    "start:chapter": "node scripts/start-chapter.mjs",
+    "offline": "python3 scripts/create-offline-preview.py"
   },
   "devDependencies": {
     "vitepress": "1.6.4",

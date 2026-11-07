@@ -32,3 +32,11 @@
 - 先读取 `NEXT.md` 确认下一篇，再检查 `content-status.json`。
 - 完成一个或少数几个连续知识点；保持站点统一；交付**整个仓库变更（或可提交到用户授权的 GitHub 仓库）**，不是仅交付一个新 HTML。
 - 若新对话无法访问最新文件，明确要求用户提供最新仓库/ZIP；不要假装已经读取过。
+
+## v0.3.0 可复用交互组件（续写优先）
+
+- `docs/components/StepLab.vue`：从 `*-lab.json` 读取 `modes`、`scenarios` 和逐帧卡片，不要复制新的一份动画播放器。
+- `docs/components/KnowledgeQuiz.vue`：从 `*-quiz.json` 读取三道或更多题目；答案和解析必须属于同一份 JSON。
+- 章节 Markdown 直接 `import Xxx from '../../components/xxx-lab.json'`，用 `<StepLab :lab="Xxx" />` 调用。
+- 每次更新执行 `npm run status && npm run check && npm run offline`。离线预览生成需要 Python `markdown-it-py`，用户直接双击现成的 `PREVIEW.html` 不需要安装依赖。
+- 已完成六节：JMM、volatile、CAS/ABA、AQS、线程池、ThreadLocal/CompletableFuture；下一阶段以 JVM 为主。

@@ -1,0 +1,32 @@
+[
+  {
+    "question": "两个线程分别执行一次 volatile count++，初始 count=0。最终一定等于 2 吗？",
+    "choices": [
+      "一定，volatile 保证每次都能看到最新值",
+      "不一定，可能等于 1",
+      "一定等于 1"
+    ],
+    "correct": 1,
+    "explanation": "正确答案 B。A、B 可能都先读到 0，分别算出 1，再依次写回 1。可见性不等于复合操作的原子性。"
+  },
+  {
+    "question": "AtomicInteger counter 已创建，下面哪一种加一是原子的？",
+    "choices": [
+      "counter.set(counter.get() + 1)",
+      "counter.incrementAndGet()",
+      "先用 volatile boolean ready=true，再执行普通 count++"
+    ],
+    "correct": 1,
+    "explanation": "正确答案 B。get()+set() 仍是两个分离的原子调用，合起来不是原子递增；incrementAndGet() 的整个递增是原子的。"
+  },
+  {
+    "question": "两个线程都使用 synchronized，但锁对象不同，count++ 是否可靠？",
+    "choices": [
+      "可靠，使用 synchronized 就够了",
+      "不可靠，必须用同一把锁保护共享 count",
+      "只要 count 是 volatile 就可靠"
+    ],
+    "correct": 1,
+    "explanation": "正确答案 B。互斥必须基于同一个监视器（锁对象）。不同锁不能阻止两个线程同时更新同一个 count。"
+  }
+]

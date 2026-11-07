@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-07",
+  "updated": "2026-11-08",
   "statusGuide": {
     "planned": "尚未开始",
     "draft": "初稿校对中",
@@ -52,32 +52,32 @@
         {
           "title": "volatile：可见性与原子性",
           "path": "java/concurrency/volatile-atomicity",
-          "status": "planned",
-          "note": ""
+          "status": "ready",
+          "note": "首版可读：双线程逐帧交错、volatile/AtomicInteger/synchronized 三模式对比、Java 复现与三道检测题"
         },
         {
           "title": "CAS、ABA 与 AtomicInteger",
           "path": "java/concurrency/cas-aba",
-          "status": "planned",
-          "note": ""
+          "status": "ready",
+          "note": "首版可读：CAS成功/失败/重试、ABA/版本号3场景动画、Java 8/17示例、3题"
         },
         {
           "title": "AQS 与锁",
           "path": "java/concurrency/aqs",
-          "status": "planned",
-          "note": ""
+          "status": "ready",
+          "note": "首版可读：锁竞争/排队、重入、非公平插队3场景动画、Java 8/17示例、3题"
         },
         {
           "title": "线程池 execute() 全流程",
           "path": "java/concurrency/thread-pool",
-          "status": "planned",
-          "note": ""
+          "status": "ready",
+          "note": "首版可读：有界队列/无界队列/shutdown 3场景动画、execute流程、可运行示例、3题"
         },
         {
           "title": "ThreadLocal 与 CompletableFuture",
           "path": "java/concurrency/thread-local",
-          "status": "planned",
-          "note": ""
+          "status": "ready",
+          "note": "首版可读：任务污染/finally清理/CompletableFuture切线程3场景动画、Java 8/17示例、3题"
         }
       ]
     },

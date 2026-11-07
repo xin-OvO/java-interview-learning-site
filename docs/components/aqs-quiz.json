@@ -1,0 +1,32 @@
+[
+  {
+    "question": "ReentrantLock 同一线程 lock 两次，必须 unlock 几次才能完全释放？",
+    "choices": [
+      "一次",
+      "两次",
+      "不必释放"
+    ],
+    "correct": 1,
+    "explanation": "可重入通过 state 计数，进入次数与退出次数需要匹配。"
+  },
+  {
+    "question": "AQS 唤醒 B，是否意味着 B 已经获得锁？",
+    "choices": [
+      "是，锁直接转移",
+      "否，B 还要重新尝试获取",
+      "唤醒就是线程结束"
+    ],
+    "correct": 1,
+    "explanation": "唤醒让线程有机会继续竞争，不代表所有权已经被直接移交。"
+  },
+  {
+    "question": "默认的 ReentrantLock() 属于？",
+    "choices": [
+      "公平锁",
+      "非公平锁",
+      "读写锁"
+    ],
+    "correct": 1,
+    "explanation": "默认非公平；公平需要 new ReentrantLock(true)。即使公平锁也有 tryLock 等语义上的例外。"
+  }
+]

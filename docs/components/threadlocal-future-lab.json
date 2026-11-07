@@ -1,0 +1,352 @@
+{
+  "title": "ThreadLocal 与 CompletableFuture：值到底在哪个线程？",
+  "intro": "同一个线程处理不同请求，为什么会串数据？异步任务为什么读不到调用方 ThreadLocal？",
+  "modes": [
+    {
+      "id": "leak",
+      "name": "线程池复用 / 数据污染",
+      "subtitle": "一个工作线程连续处理用户 A 和用户 B 两个任务。"
+    },
+    {
+      "id": "clean",
+      "name": "finally remove 修复",
+      "subtitle": "每个任务设置自己的数据，使用完主动 remove，避免留下旧请求上下文。"
+    },
+    {
+      "id": "async",
+      "name": "CompletableFuture 切线程",
+      "subtitle": "主线程设置 ThreadLocal 后，用指定线程池执行异步任务。"
+    }
+  ],
+  "scenarios": {
+    "leak": [
+      {
+        "headline": "线程池中的工作线程 W 是长期复用的",
+        "note": "ThreadLocal 的值与线程关联；不是与某一次请求自动关联。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "无上下文",
+            "detail": "还没有处理请求"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "空",
+            "detail": "W 自己的映射"
+          },
+          {
+            "label": "请求任务",
+            "value": "用户 A 到来",
+            "detail": "准备执行"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      },
+      {
+        "headline": "任务 A：写入用户 A",
+        "note": "W 在线程本地映射中记录 USER=A。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "运行任务 A",
+            "detail": "—"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "USER → A",
+            "detail": "属于 W"
+          },
+          {
+            "label": "请求任务",
+            "value": "A 处理中",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": "USER.set(\"A\");"
+      },
+      {
+        "headline": "任务 A 结束：忘记 remove",
+        "note": "W 归还线程池，但 USER=A 仍然留在线程的 ThreadLocalMap。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "等待下一个任务",
+            "detail": "没有销毁"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "USER → A",
+            "detail": "残留上次上下文"
+          },
+          {
+            "label": "请求任务",
+            "value": "A 已结束",
+            "detail": "没有清理"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "任务 B 由同一个 W 处理",
+        "note": "如果 B 忘记设置 USER、直接 get()，读到的是 A 而不是 B。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "运行任务 B",
+            "detail": "同一个线程对象"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "USER → A",
+            "detail": "旧值仍存在"
+          },
+          {
+            "label": "请求任务",
+            "value": "B 误读 A！",
+            "detail": "请求数据污染"
+          }
+        ],
+        "focus": 2,
+        "code": "System.out.println(USER.get()); // A"
+      },
+      {
+        "headline": "正确做法：每个请求完整设置与清理",
+        "note": "不要依赖 ThreadLocal 自动与请求生命周期绑定；必须保证进入、退出路径。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "可安全复用",
+            "detail": "—"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "已清理",
+            "detail": "remove 后无此条目"
+          },
+          {
+            "label": "请求任务",
+            "value": "B 结束",
+            "detail": "执行 finally"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      }
+    ],
+    "clean": [
+      {
+        "headline": "任务开始：尚无 USER",
+        "note": "工作线程 W 已就绪，ThreadLocalMap 没有对应条目。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "准备任务 A",
+            "detail": "—"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "空",
+            "detail": "—"
+          },
+          {
+            "label": "当前任务",
+            "value": "A",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "set(A)，进入 try",
+        "note": "上下文只在 W 里可见，其他线程不自动看到。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "try 中",
+            "detail": "—"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "USER → A",
+            "detail": "可读取 A"
+          },
+          {
+            "label": "当前任务",
+            "value": "A",
+            "detail": "正在处理"
+          }
+        ],
+        "focus": 1,
+        "code": "USER.set(\"A\"); try { ... }"
+      },
+      {
+        "headline": "finally：无论成功/异常都 remove",
+        "note": "如果任务在 try 中抛异常，finally 也会执行。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "try 结束",
+            "detail": "—"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "空",
+            "detail": "remove() 清理"
+          },
+          {
+            "label": "当前任务",
+            "value": "A 结束",
+            "detail": "避免污染"
+          }
+        ],
+        "focus": 1,
+        "code": "finally { USER.remove(); }"
+      },
+      {
+        "headline": "下次任务 B：get() 为 null",
+        "note": "既没有初始值也没有新的 set 时，读到 null，而不是旧用户 A。",
+        "cards": [
+          {
+            "label": "工作线程 W",
+            "value": "处理 B",
+            "detail": "线程复用"
+          },
+          {
+            "label": "ThreadLocalMap（W）",
+            "value": "空",
+            "detail": "上一任务已清理"
+          },
+          {
+            "label": "当前任务",
+            "value": "B",
+            "detail": "get() -> null"
+          }
+        ],
+        "focus": 2,
+        "code": ""
+      }
+    ],
+    "async": [
+      {
+        "headline": "主线程 set(\"A\")",
+        "note": "ThreadLocal 值归属于当前线程 main 的 ThreadLocalMap。",
+        "cards": [
+          {
+            "label": "main 线程",
+            "value": "USER=A",
+            "detail": "自己的映射"
+          },
+          {
+            "label": "异步线程 W",
+            "value": "USER=null",
+            "detail": "自己的映射"
+          },
+          {
+            "label": "Future 流程",
+            "value": "尚未提交",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": "USER.set(\"A\");"
+      },
+      {
+        "headline": "提交 CompletableFuture 异步任务",
+        "note": "supplyAsync(task, executor) 把 task 交给指定线程池。",
+        "cards": [
+          {
+            "label": "main 线程",
+            "value": "USER=A",
+            "detail": "仍然属于 main"
+          },
+          {
+            "label": "异步线程 W",
+            "value": "准备执行",
+            "detail": "尚未 set"
+          },
+          {
+            "label": "Future 流程",
+            "value": "已提交",
+            "detail": "CompletableFuture"
+          }
+        ],
+        "focus": 2,
+        "code": "CompletableFuture.supplyAsync(task, executor);"
+      },
+      {
+        "headline": "异步线程 W：get() 为 null",
+        "note": "普通 ThreadLocal 不会因为提交 Future 就把 main 的值复制到 W。",
+        "cards": [
+          {
+            "label": "main 线程",
+            "value": "USER=A",
+            "detail": "调用方值存在"
+          },
+          {
+            "label": "异步线程 W",
+            "value": "USER=null",
+            "detail": "没有自动传播"
+          },
+          {
+            "label": "Future 流程",
+            "value": "任务运行中",
+            "detail": "直接 get() 是 null"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "显式传参给任务",
+        "note": "清晰的方式是捕获不可变参数并传递给异步任务，避免隐式线程上下文依赖。",
+        "cards": [
+          {
+            "label": "main 线程",
+            "value": "user=\"A\"",
+            "detail": "明确业务参数"
+          },
+          {
+            "label": "异步线程 W",
+            "value": "接收到 user",
+            "detail": "作为方法参数"
+          },
+          {
+            "label": "Future 流程",
+            "value": "完成=\"A\"",
+            "detail": "返回结果明确"
+          }
+        ],
+        "focus": 1,
+        "code": "String user = USER.get();\nCompletableFuture.supplyAsync(() -> user, executor);"
+      },
+      {
+        "headline": "处理结果与异常",
+        "note": "CompletableFuture 代表未来结果；join 会等待并包装异常。",
+        "cards": [
+          {
+            "label": "main 线程",
+            "value": "join() 获取",
+            "detail": "等待异步结果"
+          },
+          {
+            "label": "异步线程 W",
+            "value": "任务完成",
+            "detail": "结束计算"
+          },
+          {
+            "label": "Future 流程",
+            "value": "completed",
+            "detail": "得到 A"
+          }
+        ],
+        "focus": 2,
+        "code": ""
+      }
+    ]
+  },
+  "footnote": "线程生命周期/调度为简化演示。普通 ThreadLocal 默认不会跨线程传播；不要把 UI 流程当成线程执行的实时录像。"
+}

@@ -1,0 +1,398 @@
+{
+  "title": "CAS：先核对，再提交",
+  "intro": "切换模式，跟着 A、B 的操作，看一次写入为什么会成功、失败或误判。",
+  "modes": [
+    {
+      "id": "success",
+      "name": "CAS 成功/失败/重试",
+      "subtitle": "共享计数器初始 0；A 和 B 都尝试递增。"
+    },
+    {
+      "id": "aba",
+      "name": "ABA 漏洞",
+      "subtitle": "共享状态 A → B → A，看上去没变，但中途确实变过。"
+    },
+    {
+      "id": "stamp",
+      "name": "版本号修复",
+      "subtitle": "对照 AtomicStampedReference：除了值，还要核对 stamp。"
+    }
+  ],
+  "scenarios": {
+    "success": [
+      {
+        "headline": "起点：共享值 0",
+        "note": "A 与 B 准备基于当前值加一。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "尚未读取",
+            "detail": "expected = ?"
+          },
+          {
+            "label": "共享 AtomicInteger",
+            "value": "0",
+            "detail": "当前值 value"
+          },
+          {
+            "label": "线程 B",
+            "value": "尚未读取",
+            "detail": "expected = ?"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "A 读取旧值 0",
+        "note": "A 希望把 0 改为 1，但暂时还没有提交。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "期望 0",
+            "detail": "目标 new=1"
+          },
+          {
+            "label": "共享 AtomicInteger",
+            "value": "0",
+            "detail": "尚未修改"
+          },
+          {
+            "label": "线程 B",
+            "value": "等待读取",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": "int old = atom.get();  // 0"
+      },
+      {
+        "headline": "B 也读到了 0",
+        "note": "两个线程都基于 0 构造了各自的更新尝试。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "期望 0",
+            "detail": "目标 1"
+          },
+          {
+            "label": "共享 AtomicInteger",
+            "value": "0",
+            "detail": "尚未修改"
+          },
+          {
+            "label": "线程 B",
+            "value": "期望 0",
+            "detail": "目标 1"
+          }
+        ],
+        "focus": 2,
+        "code": ""
+      },
+      {
+        "headline": "A：比较相等，更新成功",
+        "note": "原子地核对当前值还是 0，成功写成 1。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "成功 ✓",
+            "detail": "CAS(0,1) -> true"
+          },
+          {
+            "label": "共享 AtomicInteger",
+            "value": "1",
+            "detail": "A 已完成更新"
+          },
+          {
+            "label": "线程 B",
+            "value": "还未提交",
+            "detail": "仍期望 0"
+          }
+        ],
+        "focus": 1,
+        "code": "atom.compareAndSet(0, 1); // true"
+      },
+      {
+        "headline": "B：比较失败，不覆盖 A",
+        "note": "当前值已经是 1，不等于 B 手中的旧值 0。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "完成",
+            "detail": "—"
+          },
+          {
+            "label": "共享 AtomicInteger",
+            "value": "1",
+            "detail": "没有被 B 覆盖"
+          },
+          {
+            "label": "线程 B",
+            "value": "失败 ×",
+            "detail": "CAS(0,1) -> false"
+          }
+        ],
+        "focus": 2,
+        "code": "atom.compareAndSet(0, 1); // false"
+      },
+      {
+        "headline": "B 重新读取，重试成功",
+        "note": "只有显式重试的代码会重试；单次 compareAndSet 失败不会自动帮你再执行。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "完成",
+            "detail": "贡献 +1"
+          },
+          {
+            "label": "共享 AtomicInteger",
+            "value": "2",
+            "detail": "两次递增都保留"
+          },
+          {
+            "label": "线程 B",
+            "value": "成功 ✓",
+            "detail": "重新基于 1 计算到 2"
+          }
+        ],
+        "focus": 1,
+        "code": "// 例如手写 CAS 循环重试"
+      }
+    ],
+    "aba": [
+      {
+        "headline": "旧观察：状态为 A",
+        "note": "线程 A 读到状态 A，准备稍后改为 C。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "保存期望 A",
+            "detail": "稍后 CAS(A,C)"
+          },
+          {
+            "label": "共享状态",
+            "value": "A",
+            "detail": "初始状态"
+          },
+          {
+            "label": "线程 B",
+            "value": "准备修改",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      },
+      {
+        "headline": "线程 B：A 改为 B",
+        "note": "B 可能在执行某个操作后改变状态。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "尚未提交",
+            "detail": "期望仍是 A"
+          },
+          {
+            "label": "共享状态",
+            "value": "B",
+            "detail": "状态发生过变化"
+          },
+          {
+            "label": "线程 B",
+            "value": "更新成功",
+            "detail": "A → B"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "线程 B：B 又改回 A",
+        "note": "共享状态表面恢复成 A，但历史上发生过变化。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "保存期望 A",
+            "detail": "尚不知道中途变化"
+          },
+          {
+            "label": "共享状态",
+            "value": "A",
+            "detail": "经历过 A → B → A"
+          },
+          {
+            "label": "线程 B",
+            "value": "完成两次修改",
+            "detail": "—"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "A 的 CAS 仍然成功",
+        "note": "A 只核对「现在是不是 A」，结果相等。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "CAS 成功 ✓",
+            "detail": "但没识别中途变化"
+          },
+          {
+            "label": "共享状态",
+            "value": "C",
+            "detail": "A → B → A → C"
+          },
+          {
+            "label": "线程 B",
+            "value": "已结束",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": "// CAS(expected=A, update=C) 只对比当前值"
+      },
+      {
+        "headline": "问题：值相同 ≠ 状态没变化",
+        "note": "若业务要求「期间从未被他人动过」，只比较当前值就不够。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "不知道历史",
+            "detail": "逻辑可能误判"
+          },
+          {
+            "label": "共享状态",
+            "value": "C",
+            "detail": "当前值正确，但历史丢失"
+          },
+          {
+            "label": "线程 B",
+            "value": "曾经修改过",
+            "detail": "必须引入版本等约束"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      }
+    ],
+    "stamp": [
+      {
+        "headline": "先保存 (A, 0)",
+        "note": "线程 A 一次性读取当前引用和 stamp=0。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "期望 (A,0)",
+            "detail": "保存两个比较条件"
+          },
+          {
+            "label": "带版本状态",
+            "value": "(A, 0)",
+            "detail": "值 + 版本号"
+          },
+          {
+            "label": "线程 B",
+            "value": "尚未修改",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      },
+      {
+        "headline": "B：从 (A,0) 改成 (B,1)",
+        "note": "虽然改变了值，同时版本号也递增。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "期望 (A,0)",
+            "detail": "—"
+          },
+          {
+            "label": "带版本状态",
+            "value": "(B, 1)",
+            "detail": "版本加一"
+          },
+          {
+            "label": "线程 B",
+            "value": "成功",
+            "detail": "A → B"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "B：再改回 A，版本为 2",
+        "note": "值回到 A，版本不会自动回到 0。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "期望 (A,0)",
+            "detail": "—"
+          },
+          {
+            "label": "带版本状态",
+            "value": "(A, 2)",
+            "detail": "发生过两次更新"
+          },
+          {
+            "label": "线程 B",
+            "value": "成功",
+            "detail": "B → A"
+          }
+        ],
+        "focus": 1,
+        "code": ""
+      },
+      {
+        "headline": "A：比较失败",
+        "note": "引用 A 相等，但 stamp 0 ≠ 2，所以不会把 C 写进去。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "失败 ×",
+            "detail": "(A,0) != (A,2)"
+          },
+          {
+            "label": "带版本状态",
+            "value": "(A, 2)",
+            "detail": "阻止过期更新"
+          },
+          {
+            "label": "线程 B",
+            "value": "完成",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": "ref.compareAndSet(A, C, 0, 1); // false"
+      },
+      {
+        "headline": "再次读取才能决定下一步",
+        "note": "应用需要根据业务重新判断：重试、报错或重新计算。",
+        "cards": [
+          {
+            "label": "线程 A",
+            "value": "重新检查",
+            "detail": "不能无脑重试"
+          },
+          {
+            "label": "带版本状态",
+            "value": "(A, 2)",
+            "detail": "当前最新版本"
+          },
+          {
+            "label": "线程 B",
+            "value": "完成",
+            "detail": "—"
+          }
+        ],
+        "focus": 0,
+        "code": ""
+      }
+    ]
+  },
+  "footnote": "概念模型：CAS 检查的是当前比较条件；ABA 是否算错误取决于业务。版本号示意采用严格递增，不代表版本永不溢出。"
+}
